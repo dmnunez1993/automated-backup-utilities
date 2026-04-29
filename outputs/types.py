@@ -1,2 +1,3 @@
 MINIO_OUTPUT_TYPE = "minio"
 DROPBOX_OUTPUT_TYPE = "dropbox"
+ONEDRIVE_OUTPUT_TYPE = "onedrive"

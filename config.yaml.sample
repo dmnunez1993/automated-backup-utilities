@@ -76,3 +76,17 @@
         app_secret: <your_dropbox_app_secret>     # Dropbox app secret (from the App Console)
         access_token: <your_dropbox_access_token> # OAuth2 offline refresh token
         dest_folder: /backups           # Destination folder path inside your Dropbox
+- name: <onedrive_backup_name_here>
+  max_backups_stored: 3
+  schedule: "* * * * *"
+  type: local
+  local:
+    path: <your_local_path>
+  outputs:
+    - type: onedrive                    # Output type
+      onedrive:                         # In case onedrive is selected in type, the following fields must be completed
+        client_id: <your_azure_app_client_id>       # Azure app registration client ID
+        client_secret: <your_azure_app_client_secret> # Azure app registration client secret
+        tenant_id: consumers            # Use 'consumers' for personal accounts or your Azure tenant ID for work/school accounts
+        refresh_token: <your_oauth2_refresh_token>  # OAuth2 refresh token obtained via interactive authorization
+        dest_folder: backups            # Destination folder path inside your OneDrive (relative to root)

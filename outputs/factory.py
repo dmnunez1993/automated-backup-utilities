@@ -2,7 +2,8 @@ from typing import Dict, Any
 
 from .dropbox import DropboxOutput
 from .minio import MinioOutput
-from .types import DROPBOX_OUTPUT_TYPE, MINIO_OUTPUT_TYPE
+from .onedrive import OneDriveOutput
+from .types import DROPBOX_OUTPUT_TYPE, MINIO_OUTPUT_TYPE, ONEDRIVE_OUTPUT_TYPE
 
 
 def output_factory(config: Dict[str, Any]):
@@ -22,6 +23,15 @@ def output_factory(config: Dict[str, Any]):
             app_secret=config["dropbox"]["app_secret"],
             access_token=config["dropbox"]["access_token"],
             dest_folder=config["dropbox"]["dest_folder"],
+        )
+
+    if output_type == ONEDRIVE_OUTPUT_TYPE:
+        return OneDriveOutput(
+            client_id=config["onedrive"]["client_id"],
+            client_secret=config["onedrive"]["client_secret"],
+            tenant_id=config["onedrive"]["tenant_id"],
+            refresh_token=config["onedrive"]["refresh_token"],
+            dest_folder=config["onedrive"]["dest_folder"],
         )
 
     raise NotImplementedError(f"Output of type '{output_type}' not implemented")
