@@ -63,3 +63,16 @@
         secret_key: <your_minio_secret_key>
         secure: false
         bucket_name: <your_bucket_name>
+- name: <dropbox_backup_name_here>
+  max_backups_stored: 3
+  schedule: "* * * * *"
+  type: local
+  local:
+    path: <your_local_path>
+  outputs:
+    - type: dropbox                     # Output type
+      dropbox:                          # In case dropbox is selected in type, the following fields must be completed
+        app_key: <your_dropbox_app_key>           # Dropbox app key (from the App Console)
+        app_secret: <your_dropbox_app_secret>     # Dropbox app secret (from the App Console)
+        refresh_token: <your_dropbox_refresh_token> # OAuth2 offline refresh token
+        dest_folder: /backups           # Destination folder path inside your Dropbox
