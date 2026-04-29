@@ -41,13 +41,18 @@ class DropboxOutput(BaseOutput):
         client = self._get_client()
 
         file_size = os.path.getsize(file_path)
-        chunk_size = 150 * 1024 * 1024  # 150 MB
+        chunk_size = 150 * 1024 * 1024    # 150 MB
 
         with open(file_path, "rb") as f:
             if file_size <= chunk_size:
-                client.files_upload(f.read(), dest_path, mode=WriteMode.overwrite)
+                client.files_upload(
+                    f.read(),
+                    dest_path,
+                    mode=WriteMode.overwrite,
+                )
             else:
-                session_start = client.files_upload_session_start(f.read(chunk_size))
+                session_start = client.files_upload_session_start(
+                    f.read(chunk_size))
                 cursor = dropbox.files.UploadSessionCursor(
                     session_id=session_start.session_id,
                     offset=f.tell(),
@@ -60,11 +65,14 @@ class DropboxOutput(BaseOutput):
                     remaining = file_size - f.tell()
                     if remaining <= chunk_size:
                         client.files_upload_session_finish(
-                            f.read(remaining), cursor, commit
+                            f.read(remaining),
+                            cursor,
+                            commit,
                         )
                     else:
                         client.files_upload_session_append_v2(
-                            f.read(chunk_size), cursor
+                            f.read(chunk_size),
+                            cursor,
                         )
                         cursor.offset = f.tell()
 
