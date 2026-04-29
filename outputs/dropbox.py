@@ -13,18 +13,18 @@ class DropboxOutput(BaseOutput):
         self,
         app_key: str,
         app_secret: str,
-        refresh_token: str,
+        access_token: str,
         dest_folder: str,
     ):
         self._app_key = app_key
         self._app_secret = app_secret
-        self._refresh_token = refresh_token
+        self._access_token = access_token
         self._dest_folder = dest_folder.rstrip("/")
         self._logger = logging.getLogger("automated_backup_utilities")
 
     def _get_client(self):
         return dropbox.Dropbox(
-            oauth2_refresh_token=self._refresh_token,
+            oauth2_access_token=self._access_token,
             app_key=self._app_key,
             app_secret=self._app_secret,
         )
@@ -52,7 +52,8 @@ class DropboxOutput(BaseOutput):
                 )
             else:
                 session_start = client.files_upload_session_start(
-                    f.read(chunk_size))
+                    f.read(chunk_size)
+                )
                 cursor = dropbox.files.UploadSessionCursor(
                     session_id=session_start.session_id,
                     offset=f.tell(),

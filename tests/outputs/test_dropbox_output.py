@@ -9,7 +9,7 @@ def _make_output():
     return DropboxOutput(
         app_key="app_key",
         app_secret="app_secret",
-        refresh_token="refresh_token",
+        access_token="access_token",
         dest_folder="/backups",
     )
 
@@ -103,14 +103,15 @@ def test_remove_calls_files_delete_with_full_path():
         output.remove("backup.tar.gz")
 
     mock_client.files_delete_v2.assert_called_once_with(
-        "/backups/backup.tar.gz")
+        "/backups/backup.tar.gz"
+    )
 
 
 def test_dest_folder_trailing_slash_is_normalized():
     output = DropboxOutput(
         app_key="k",
         app_secret="s",
-        refresh_token="t",
+        access_token="t",
         dest_folder="/backups/",
     )
     mock_client = MagicMock()

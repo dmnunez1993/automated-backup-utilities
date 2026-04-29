@@ -20,7 +20,7 @@ def output_factory(config: Dict[str, Any]):
         return DropboxOutput(
             app_key=config["dropbox"]["app_key"],
             app_secret=config["dropbox"]["app_secret"],
-            refresh_token=config["dropbox"]["refresh_token"],
+            access_token=config["dropbox"]["access_token"],
             dest_folder=config["dropbox"]["dest_folder"],
         )
 
