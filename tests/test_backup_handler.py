@@ -76,10 +76,14 @@ def test_clean_enforces_limit_across_all_outputs():
     mock_out1 = MagicMock()
     mock_out2 = MagicMock()
     mock_out1.list_files.return_value = [
-        "mybackup_c.tar.gz", "mybackup_b.tar.gz", "mybackup_a.tar.gz"
+        "mybackup_c.tar.gz",
+        "mybackup_b.tar.gz",
+        "mybackup_a.tar.gz"
     ]
     mock_out2.list_files.return_value = [
-        "mybackup_c.tar.gz", "mybackup_b.tar.gz", "mybackup_a.tar.gz"
+        "mybackup_c.tar.gz",
+        "mybackup_b.tar.gz",
+        "mybackup_a.tar.gz"
     ]
     handler, _, _ = _make_handler(max_backups=2, outputs=[mock_out1, mock_out2])
 
