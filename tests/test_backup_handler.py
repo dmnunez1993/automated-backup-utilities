@@ -6,7 +6,8 @@ from backup import BackupHandler
 def _make_handler(name="mybackup", max_backups=3, outputs=None):
     mock_input = MagicMock()
     mock_outputs = outputs if outputs is not None else [MagicMock()]
-    return BackupHandler(name, max_backups, mock_input, mock_outputs), mock_input, mock_outputs
+    return BackupHandler(name, max_backups, mock_input,
+                         mock_outputs), mock_input, mock_outputs
 
 
 def test_backup_calls_store_with_filename_and_path():
@@ -51,7 +52,7 @@ def test_clean_removes_oldest_files_over_limit():
         "mybackup_2024-01-03.tar.gz",
         "mybackup_2024-01-01.tar.gz",
         "mybackup_2024-01-02.tar.gz",
-        "other_backup_2024-01-01.tar.gz",  # different prefix, must be ignored
+        "other_backup_2024-01-01.tar.gz",    # different prefix, must be ignored
     ]
 
     handler.clean_previous_backups()
@@ -74,8 +75,12 @@ def test_clean_keeps_all_files_when_under_limit():
 def test_clean_enforces_limit_across_all_outputs():
     mock_out1 = MagicMock()
     mock_out2 = MagicMock()
-    mock_out1.list_files.return_value = ["mybackup_c.tar.gz", "mybackup_b.tar.gz", "mybackup_a.tar.gz"]
-    mock_out2.list_files.return_value = ["mybackup_c.tar.gz", "mybackup_b.tar.gz", "mybackup_a.tar.gz"]
+    mock_out1.list_files.return_value = [
+        "mybackup_c.tar.gz", "mybackup_b.tar.gz", "mybackup_a.tar.gz"
+    ]
+    mock_out2.list_files.return_value = [
+        "mybackup_c.tar.gz", "mybackup_b.tar.gz", "mybackup_a.tar.gz"
+    ]
     handler, _, _ = _make_handler(max_backups=2, outputs=[mock_out1, mock_out2])
 
     handler.clean_previous_backups()
@@ -89,8 +94,13 @@ def test_from_config_constructs_handler():
         "name": "test_backup",
         "max_backups_stored": 2,
         "type": "local",
-        "local": {"path": "/some/path"},
-        "outputs": [{"type": "minio", "minio": {}}],
+        "local": {
+            "path": "/some/path"
+        },
+        "outputs": [{
+            "type": "minio",
+            "minio": {}
+        }],
     }
     mock_input = MagicMock()
     mock_output = MagicMock()

@@ -41,7 +41,9 @@ def test_docker_type_returns_docker_input():
     config = {
         "name": "docker_backup",
         "type": "docker",
-        "docker": {"volume_name": "myvolume"},
+        "docker": {
+            "volume_name": "myvolume"
+        },
     }
     assert isinstance(input_factory(config), DockerInput)
 
@@ -50,7 +52,9 @@ def test_local_type_returns_local_input():
     config = {
         "name": "local_backup",
         "type": "local",
-        "local": {"path": "/some/path"},
+        "local": {
+            "path": "/some/path"
+        },
     }
     assert isinstance(input_factory(config), LocalInput)
 

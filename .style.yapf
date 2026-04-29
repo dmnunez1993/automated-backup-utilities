@@ -4,3 +4,5 @@ spaces_before_comment = 4
 indent_width: 4  
 split_before_logical_operator = true
 column_limit = 80
+SPLIT_ALL_COMMA_SEPARATED_VALUES = true
+DEDENT_CLOSING_BRACKETS = true

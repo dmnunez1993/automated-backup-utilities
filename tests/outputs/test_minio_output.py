@@ -20,9 +20,9 @@ def test_store_calls_fput_object_with_correct_args():
     with patch("outputs.minio.Minio", return_value=mock_client):
         output.store("backup.tar.gz", "/tmp/backup.tar.gz")
 
-    mock_client.fput_object.assert_called_once_with(
-        "test-bucket", "backup.tar.gz", "/tmp/backup.tar.gz", None
-    )
+    mock_client.fput_object.assert_called_once_with("test-bucket",
+                                                    "backup.tar.gz",
+                                                    "/tmp/backup.tar.gz", None)
 
 
 def test_store_passes_content_type_when_provided():
@@ -33,7 +33,10 @@ def test_store_passes_content_type_when_provided():
         output.store("backup.tar.gz", "/tmp/backup.tar.gz", "application/gzip")
 
     mock_client.fput_object.assert_called_once_with(
-        "test-bucket", "backup.tar.gz", "/tmp/backup.tar.gz", "application/gzip"
+        "test-bucket",
+        "backup.tar.gz",
+        "/tmp/backup.tar.gz",
+        "application/gzip",
     )
 
 
@@ -59,4 +62,5 @@ def test_remove_calls_remove_object():
     with patch("outputs.minio.Minio", return_value=mock_client):
         output.remove("backup.tar.gz")
 
-    mock_client.remove_object.assert_called_once_with("test-bucket", "backup.tar.gz")
+    mock_client.remove_object.assert_called_once_with("test-bucket",
+                                                      "backup.tar.gz")

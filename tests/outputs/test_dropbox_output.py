@@ -102,7 +102,8 @@ def test_remove_calls_files_delete_with_full_path():
     with patch.object(output, "_get_client", return_value=mock_client):
         output.remove("backup.tar.gz")
 
-    mock_client.files_delete_v2.assert_called_once_with("/backups/backup.tar.gz")
+    mock_client.files_delete_v2.assert_called_once_with(
+        "/backups/backup.tar.gz")
 
 
 def test_dest_folder_trailing_slash_is_normalized():
