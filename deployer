@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+import copy
 import os
 import subprocess
 import sys
+
+import yaml
 
 APP_IMAGE_NAME = 'automated_backup_utilities'
 DEFAULT_COMPOSE_NAME = 'automated_backup_utilities_prod'
@@ -9,6 +12,10 @@ DEFAULT_COMPOSE_NAME = 'automated_backup_utilities_prod'
 IMAGE_NAMES = [
     APP_IMAGE_NAME,
 ]
+
+LOCAL_INPUT_CONTAINER_BASE = '/local_inputs'
+OVERRIDE_FILE = 'docker-compose.override.yml'
+DOCKER_CONFIG_PATH = '/tmp/config.docker.yaml'
 
 
 def get_compose_name():
@@ -21,8 +28,61 @@ def run_command(command):
 
 
 def get_repo_root():
-    return subprocess.check_output('git rev-parse --show-toplevel'.split(),
-                                   encoding='utf-8').strip()
+    return subprocess.check_output(
+        'git rev-parse --show-toplevel'.split(),
+        encoding='utf-8'
+    ).strip()
+
+
+def generate_override(repo_root, config_path):
+    """Read config.yaml, remap local input paths to container paths, and write
+    docker-compose.override.yml with the required volume mounts.
+    Returns True if an override was generated, False otherwise.
+    """
+    with open(config_path, 'r', encoding='utf-8') as f:
+        configs = yaml.safe_load(f)
+
+    modified_configs = copy.deepcopy(configs)
+    extra_volumes = []
+
+    for config in modified_configs:
+        if config.get('type') == 'local':
+            name = config['name']
+            host_path = config['local']['path']
+            container_path = f"{LOCAL_INPUT_CONTAINER_BASE}/{name}"
+            extra_volumes.append(f"{host_path}:{container_path}")
+            config['local']['path'] = container_path
+
+    if not extra_volumes:
+        return False
+
+    # Write the modified config to /tmp so the already-mounted /tmp volume
+    # makes it available inside the container without an extra mount.
+    host_docker_config = DOCKER_CONFIG_PATH
+    with open(host_docker_config, 'w', encoding='utf-8') as f:
+        yaml.dump(modified_configs, f, default_flow_style=False)
+
+    override = {
+        'services':
+            {
+                'backup_utilities':
+                    {
+                        'environment': {
+                            'CONFIG_PATH': DOCKER_CONFIG_PATH,
+                        },
+                        'volumes': extra_volumes,
+                    }
+            }
+    }
+
+    override_path = os.path.join(repo_root, OVERRIDE_FILE)
+    with open(override_path, 'w', encoding='utf-8') as f:
+        yaml.dump(override, f, default_flow_style=False)
+
+    print(
+        f"Generated {OVERRIDE_FILE} with {len(extra_volumes)} local volume mount(s)."
+    )
+    return True
 
 
 def stop():
@@ -44,17 +104,20 @@ def main():
     if command == 'build':
         print("Building services...")
 
-        run_command(f"""
+        run_command(
+            f"""
             cd {repo_root} && \ 
                 docker build -f {app_dockerfile_path} -t {APP_IMAGE_NAME}:latest .
-        """)
+        """
+        )
 
     if command == 'push':
         registry = sys.argv[2]
 
         for image_name in IMAGE_NAMES:
             run_command(
-                f'''docker tag {image_name}:latest {registry}/{image_name}''')
+                f'''docker tag {image_name}:latest {registry}/{image_name}'''
+            )
             run_command(f'docker push {registry}/{image_name}')
 
     if command == 'pull':
@@ -63,14 +126,27 @@ def main():
         for image_name in IMAGE_NAMES:
             run_command(f'docker pull {registry}/{image_name}')
             run_command(
-                f'''docker tag {registry}/{image_name} {image_name}:latest''')
+                f'''docker tag {registry}/{image_name} {image_name}:latest'''
+            )
 
     if command == 'deploy':
         print("Deploying services...")
+        config_path = os.environ.get(
+            'CONFIG_PATH',
+            os.path.join(repo_root,
+                         'config.yaml')
+        )
+        generate_override(repo_root, config_path)
         run_command(f'docker compose -p {compose_name} up -d')
 
     if command == 'start':
         print("Starting services...")
+        config_path = os.environ.get(
+            'CONFIG_PATH',
+            os.path.join(repo_root,
+                         'config.yaml')
+        )
+        generate_override(repo_root, config_path)
         run_command(f'docker compose -p {compose_name} up')
 
     if command == 'stop':
@@ -79,9 +155,11 @@ def main():
 
     if command == 'shell':
         print("Starting up shell...")
-        run_command(f'''
+        run_command(
+            f'''
             docker compose -p {compose_name} run backup_utilities sh
-        ''')
+        '''
+        )
 
 
 if __name__ == '__main__':
