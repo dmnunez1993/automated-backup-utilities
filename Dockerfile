@@ -12,4 +12,6 @@ RUN pip install -r requirements.txt
 
 COPY . /app/
 
+RUN python -m pytest tests/ -v
+
 CMD [ "python3", "app.py" ]

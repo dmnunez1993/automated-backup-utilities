@@ -39,6 +39,12 @@ To run the app:
 
     python3 app.py
 
+### Testing
+
+To run the unit tests:
+
+    python -m pytest tests/ -v
+
 ### Deployment
 
 To build the project for deployment using docker:
