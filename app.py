@@ -50,6 +50,7 @@ def main():
             _execute_backup,
             CronTrigger.from_crontab(config["schedule"]),
             [config],
+            misfire_grace_time=None,
         )
 
     logger.info("Starting automated backup utility")
