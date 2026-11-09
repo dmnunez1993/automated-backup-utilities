@@ -1,4 +1,25 @@
 # It is possible to add as many backup configurations as required
+- name: <kubernetes_volume_backup_here>
+  max_backups_stored: 3
+  schedule: "0 2 * * *"
+  type: kubernetes
+  kubernetes:
+    statefulset_name: <your_statefulset_name>
+    namespace: default
+    path: /data                        # Absolute mounted directory inside the container
+    # container: app                   # Select the container that mounts the volume
+    # pod_ordinal: 0                   # Default: StatefulSet's starting ordinal
+    # kubeconfig: /config/kubeconfig    # Optional host path with deployer; container path otherwise
+    # context: my-cluster
+    # timeout_seconds: 300
+  outputs:
+    - type: minio
+      minio:
+        endpoint: <minio_host>:<minio_port>
+        access_key: <your_minio_access_key>
+        secret_key: <your_minio_secret_key>
+        secure: false
+        bucket_name: <your_bucket_name>
 - name: <postgresql_backup_name_here>   # Name used for the backup
   max_backups_stored: 3                 # Max amount of backups to be stored
   schedule: "* * * * *"                 # Crontab schedule indicating the app when to run the backup

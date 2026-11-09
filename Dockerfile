@@ -1,6 +1,6 @@
 FROM python:3.12-alpine
 
-RUN apk add postgresql docker mysql-client && rm -rf /var/cache/apk/*
+RUN apk add postgresql docker mysql-client kubectl && rm -rf /var/cache/apk/*
 
 RUN mkdir /app
 
