@@ -37,6 +37,18 @@ def get_compose_name():
     return compose_name
 
 
+def get_compose():
+    for command in (['docker', 'compose'], ['docker-compose']):
+        try:
+            version = subprocess.check_output(
+                command + ['version', '--short'], stderr=subprocess.DEVNULL)
+        except (OSError, subprocess.CalledProcessError):
+            continue
+        return command, version.strip().lstrip(b'v').startswith(b'1.')
+    raise SystemExit('Docker Compose is required. Make docker compose or '
+                     'docker-compose available on this host.')
+
+
 def run_command(command):
     subprocess.call(command, shell=True)
 
@@ -48,7 +60,7 @@ def get_repo_root():
     return subprocess.check_output(command, encoding='utf-8').strip()
 
 
-def generate_override(repo_root, config_path):
+def generate_override(repo_root, config_path, legacy_compose=False):
     """Read config.yaml, remap local and Kubernetes paths for Docker, and write
     docker-compose.override.yml with the required volume mounts.
     Returns True if an override was generated, False otherwise.
@@ -72,13 +84,15 @@ def generate_override(repo_root, config_path):
         if directory not in kube_directories:
             container_directory = '/kube/{}'.format(len(kube_directories))
             kube_directories[directory] = container_directory
-            extra_volumes.append({
+            mount = {
                 'type': 'bind',
                 'source': directory,
                 'target': container_directory,
                 'read_only': True,
-                'bind': {'create_host_path': False},
-            })
+            }
+            if not legacy_compose:
+                mount['bind'] = {'create_host_path': False}
+            extra_volumes.append(mount)
         return '{}/{}'.format(kube_directories[directory], os.path.basename(host_path))
 
     for config in modified_configs:
@@ -135,11 +149,6 @@ def generate_override(repo_root, config_path):
     return True
 
 
-def stop():
-    print("Stopping services...")
-    run_command('docker compose -p {} stop'.format(get_compose_name()))
-
-
 def main():
     command = sys.argv[1]
 
@@ -150,8 +159,6 @@ def main():
         repo_root,
         'Dockerfile',
     )
-
-    compose_name = get_compose_name()
 
     if command == 'build':
         print("Building services...")
@@ -181,34 +188,25 @@ def main():
                     registry=registry, image=image_name)
             )
 
-    if command == 'deploy':
-        print("Deploying services...")
-        config_path = os.environ.get(
-            'CONFIG_PATH',
-            os.path.join(repo_root,
-                         'config.yaml')
-        )
-        generate_override(repo_root, config_path)
-        run_command('docker compose -p {} up -d'.format(compose_name))
-
-    if command == 'start':
-        print("Starting services...")
-        config_path = os.environ.get(
-            'CONFIG_PATH',
-            os.path.join(repo_root,
-                         'config.yaml')
-        )
-        generate_override(repo_root, config_path)
-        run_command('docker compose -p {} up'.format(compose_name))
-
-    if command == 'stop':
-        print("Stopping services...")
-        stop()
-
-    if command == 'shell':
-        print("Starting up shell...")
-        run_command('docker compose -p {} run backup_utilities sh'.format(compose_name))
+    compose_actions = {
+        'deploy': ('Deploying services...', ['up', '-d']),
+        'start': ('Starting services...', ['up']),
+        'stop': ('Stopping services...', ['stop']),
+        'shell': ('Starting up shell...', ['run', 'backup_utilities', 'sh']),
+    }
+    if command in compose_actions:
+        compose, legacy_compose = get_compose()
+        message, arguments = compose_actions[command]
+        print(message)
+        # Compose treats a bare filename in the volume source as a named volume.
+        config_path = os.path.abspath(os.environ.get('CONFIG_PATH') or
+                                      os.path.join(repo_root, 'config.yaml'))
+        if command in ('deploy', 'start'):
+            generate_override(repo_root, config_path, legacy_compose=legacy_compose)
+        environment = dict(os.environ, CONFIG_PATH=config_path)
+        return subprocess.call(compose + ['-p', get_compose_name()] + arguments,
+                               env=environment)
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

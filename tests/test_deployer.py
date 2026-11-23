@@ -2,6 +2,7 @@ import importlib.machinery
 import importlib.util
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -133,7 +134,8 @@ class DeployerTests(unittest.TestCase):
         (self.root / '.env').write_text(f'KUBE_CONFIG_DIR={first.parent}\n')
         self.config.write_text(yaml.safe_dump([self.kubernetes()]))
         with patch.object(deployer, 'get_repo_root', return_value=str(self.root)), \
-             patch.object(deployer, 'run_command') as run, \
+             patch.object(subprocess, 'check_output', return_value=b'2.40.0\n') as version, \
+             patch.object(subprocess, 'call', return_value=0) as run, \
              patch('sys.argv', ['deployer', 'deploy']):
             deployer.main()
             self.assertEqual(self.service()['volumes'][0]['source'], str(first.parent))
@@ -141,6 +143,37 @@ class DeployerTests(unittest.TestCase):
             deployer.main()
             self.assertEqual(self.service()['volumes'][0]['source'], str(second.parent))
             self.assertEqual(run.call_count, 2)
+            version.assert_called_with(['docker', 'compose', 'version', '--short'],
+                                       stderr=subprocess.DEVNULL)
+            run.assert_called_with(['docker', 'compose', '-p',
+                                    deployer.DEFAULT_COMPOSE_NAME, 'up', '-d'],
+                                   env=dict(os.environ, CONFIG_PATH=str(self.config)))
+
+    def test_deploy_falls_back_to_compose_v1(self):
+        path = self.kubeconfig()
+        self.config.write_text(yaml.safe_dump([self.kubernetes()]))
+        os.environ['CONFIG_PATH'] = os.path.relpath(str(self.config))
+        with patch.object(deployer, 'get_repo_root', return_value=str(self.root)), \
+             patch.object(subprocess, 'check_output', side_effect=[
+                 subprocess.CalledProcessError(125, ['docker', 'compose']), b'1.29.2\n']), \
+             patch.object(subprocess, 'call', return_value=7) as run, \
+             patch('sys.argv', ['deployer', 'deploy']):
+            self.assertEqual(deployer.main(), 7)
+            run.assert_called_once_with(['docker-compose', '-p',
+                                         deployer.DEFAULT_COMPOSE_NAME, 'up', '-d'],
+                                        env=dict(os.environ, CONFIG_PATH=str(self.config)))
+
+        self.assertEqual(self.service()['volumes'], [{
+            'type': 'bind', 'source': str(path.parent), 'target': '/kube/0',
+            'read_only': True}])
+
+    def test_missing_compose_fails_before_writing_override(self):
+        with patch.object(deployer, 'get_repo_root', return_value=str(self.root)), \
+             patch.object(subprocess, 'check_output', side_effect=FileNotFoundError), \
+             patch('sys.argv', ['deployer', 'deploy']):
+            with self.assertRaisesRegex(SystemExit, 'Docker Compose is required'):
+                deployer.main()
+        self.assertFalse(self.override.exists())
 
 
 if __name__ == '__main__':
