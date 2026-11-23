@@ -10,8 +10,8 @@ from unittest.mock import patch
 import yaml
 
 
-loader = importlib.machinery.SourceFileLoader(
-    'backup_deployer', str(Path(__file__).resolve().parents[1] / 'deployer'))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+loader = importlib.machinery.SourceFileLoader('backup_deployer', str(REPO_ROOT / 'deployer'))
 spec = importlib.util.spec_from_loader(loader.name, loader)
 deployer = importlib.util.module_from_spec(spec)
 loader.exec_module(deployer)
@@ -153,19 +153,25 @@ class DeployerTests(unittest.TestCase):
         path = self.kubeconfig()
         self.config.write_text(yaml.safe_dump([self.kubernetes()]))
         os.environ['CONFIG_PATH'] = os.path.relpath(str(self.config))
-        with patch.object(deployer, 'get_repo_root', return_value=str(self.root)), \
-             patch.object(subprocess, 'check_output', side_effect=[
-                 subprocess.CalledProcessError(125, ['docker', 'compose']), b'1.29.2\n']), \
-             patch.object(subprocess, 'call', return_value=7) as run, \
-             patch('sys.argv', ['deployer', 'deploy']):
-            self.assertEqual(deployer.main(), 7)
-            run.assert_called_once_with(['docker-compose', '-p',
-                                         deployer.DEFAULT_COMPOSE_NAME, 'up', '-d'],
-                                        env=dict(os.environ, CONFIG_PATH=str(self.config)))
-
-        self.assertEqual(self.service()['volumes'], [{
+        base = yaml.safe_load((REPO_ROOT / 'docker-compose.yml').read_text())
+        short_mount = '{}:/kube/0:ro'.format(path.parent)
+        long_mount = {
             'type': 'bind', 'source': str(path.parent), 'target': '/kube/0',
-            'read_only': True}])
+            'read_only': True}
+        for version, expected_mount in [(b'1.25.5\n', short_mount), (b'1.29.2\n', long_mount)]:
+            with self.subTest(version=version), \
+                 patch.object(deployer, 'get_repo_root', return_value=str(self.root)), \
+                 patch.object(subprocess, 'check_output', side_effect=[
+                     subprocess.CalledProcessError(125, ['docker', 'compose']), version]), \
+                 patch.object(subprocess, 'call', return_value=7) as run, \
+                 patch('sys.argv', ['deployer', 'deploy']):
+                self.assertEqual(deployer.main(), 7)
+                run.assert_called_once_with(['docker-compose', '-p',
+                                             deployer.DEFAULT_COMPOSE_NAME, 'up', '-d'],
+                                            env=dict(os.environ, CONFIG_PATH=str(self.config)))
+                override = yaml.safe_load(self.override.read_text())
+                self.assertEqual(override['version'], base['version'])
+                self.assertEqual(self.service()['volumes'], [expected_mount])
 
     def test_missing_compose_fails_before_writing_override(self):
         with patch.object(deployer, 'get_repo_root', return_value=str(self.root)), \
