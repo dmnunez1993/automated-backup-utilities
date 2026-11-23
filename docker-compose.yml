@@ -2,6 +2,7 @@ version: '2.0'
 services:
   backup_utilities:
     image: 'automated_backup_utilities:latest'
+    network_mode: host
     restart: always      
     tty: true
     stdin_open: true
